@@ -84,4 +84,10 @@ Notre script génère pour l'instant qu'un dictionnaire contenant toutes les inf
 il serait utile de créer un autre script qui va analyser ce dictionnaire afin de remonter l'arborescence de création / suppression
 de variable d'environnement dans le fichier `.env` ou `docker-compose.yml`
 
+# Limite de la solution actuelle
+
+Pour l'instant, nous avons posé l'hypothèse que les variables d'environnement introduites sont utilisées avec leur nom d'origine. 
+Cette hypothèse peut entraîner une perte d'information en cas de renommage de cette variable lors de sa récupération/utilisation. Effectivement, nous avons observé que dans certains projets, les variables déclarées dans un docker-compose.yml peuvent être renommées lorsqu'elles sont récupérées dans l'application dockerisée. 
+Ce phénomène entraîne une perte de tracabilité sur l'utilisation de cette variable.
+Dans le cadre de notre MVP, nous ne nous occuperons pas de ce cas particulier, cependant, il sera intéréssant par le futur de trouver un moyen de continuer de tracer cette variable malgrès son renommage.
 
