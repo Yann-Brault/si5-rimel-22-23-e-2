@@ -63,16 +63,17 @@ for commit in repository.iter_commits():
                                 commits[commit_name]['deletion'].append(
                                     {name: {'file': commit_file, 'value': value}})
 
+# print(commits)
+    var_utils = {}
     if commit_name in commits.keys():
         for commit_file in commit.stats.files.keys():
             try:
-                result = repository.git.log(
-                    "--patch", f"{commit}", commit_file
-                )
+                result = repository.git.show(commit_name)
             except:
                 print(
                     f"file {commit_file} was deleted in the commit {commit_name}")
                 continue
-
+            # var_utils[commit_name] = {"file": commit_file, "result": result}
             print(
                 f"commit_name : {commit_name}, file : {commit_file}, result : {result}")
+# print(var_utils)
