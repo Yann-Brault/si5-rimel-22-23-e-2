@@ -26,38 +26,53 @@ def extract_environment_variable(word: str) -> str:
     :return: '' if the word is not an envionment variable, else the filtered environment variable
     """
 
-    # word = "${MY_VARIABLE_ENV}"
-    word_without_special_characters = [''.join(e for e in r if e.isalnum() or e == '_') for r in word]
-    # word_without_special_characters = ['', '', 'M', 'Y', '_', 'V', 'A', 'R', 'I', 'A', 'B', 'L', 'E', '_', 'E', 'N', 'V', '']
-    only_majs = flatten([re.findall(r"(^[A-Z0-9_]+)", x) for x in word_without_special_characters])
-    # only_majs = ['M', 'Y', '_', 'V', 'A', 'R', 'I', 'A', 'B', 'L', 'E', '_', 'E', 'N', 'V']
-    word_filtered = ''.join([x for x in only_majs])
-    # word_filtered = MY_VARIABLE_ENV
+    temp_word: str = word
 
-    if word_filtered != '' and len(word_filtered) > 1 and not word_filtered.isnumeric():
-        return word_filtered
-    else:
+    # Remove the prefix in the word
+    for letter in temp_word:
+        if letter.isupper():
+            break
+        word = word[1:]
+
+    temp_word = word
+    # Remove the suffix in the word
+    for letter in temp_word[::-1]:
+        if letter.isupper():
+            break
+        word = word[:-1]
+
+    filtered_regex = flatten(re.findall(r"(^[A-Z0-9_]+)", word))
+    if len(filtered_regex) == 0 or len(filtered_regex[0]) == 1:
         return ''
+
+    if len(filtered_regex[0]) == len(word):
+        return word
+
+
+    return ''
 
 
 def recover_environment_variable_in_a_file(url_file: str) -> List[str]:
     result = []
     with open(url_file) as file:
-        for line in file:
-            # print('zzzzzz ', item)
-            # print(item)
-            # matches = re.findall("(^[A-Z0-9_]+)", item)
+        for line_number, line in enumerate(file, 1):
             words_in_line = line.split()
 
             for word in words_in_line:
                 env_variable = extract_environment_variable(word)
                 if env_variable != '':
-                    result.append(env_variable)
+                    result.append({"line_number": line_number, "env_variable": env_variable, "line_content": line})
 
     return result
 
 
-files = glob.glob(f'{WORKING_REPOSITORY}/**/*.yml', recursive=True)
+
+
+types = ('yml', 'java', 'js') # the tuple of file types
+files = []
+for file_type in types:
+    files.extend(glob.glob(f'{WORKING_REPOSITORY}/**/*.{file_type}', recursive=True))
+
 files = [f for f in files if os.path.isfile(f)]
 
 result = {}
