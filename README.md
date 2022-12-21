@@ -1,31 +1,47 @@
 
-# si5-rimel-22-23-e
+## Sujet : Peut-on déterminer la paternité de l’implémentation (et l’évolution) d’une fonctionnalité variable à partir du code en appliquant les méthodes de détermination de paternité aux endroits où la variabilité est implémentée ?
 
-## Sujet de recheche :
+Afin de répondre au mieux à cette question, nous avons fait le choix de décomposer le projet en plusieurs sous-questions :
 
-```
-Peut-on déterminer la paternité de l’implémentation (et l’évolution) d’une fonctionnalité variable à partir du code en appliquant les méthodes de détermination de paternité aux endroits où la variabilité est implémentée ?
-```
+### 1️⃣ - Peut-on identifier, à gros grain,  la paternité des variables d'environnement dans un code ?
+**Objectif :** Trouver le premier créateur d’une variable d’environnement, et ensuite suivre qui l’a édité au fur et à mesure du temps (jusqu’à sa potentielle suppression)
 
-et en particulier :
+#### 1️⃣ 1️⃣ - Qui a créé pour la première fois la variable d’environnement ?
 
-```
-Se concentrer sur la chaîne complète (depuis des outils de construction qui exploitent les variables d’environnement jusqu’au code)
-```
+**Hypothèses :** Quand un utilisateur ajoute une variable d’environnement au projet, il l’ajoute en premier lieu dans un fichier de configuration
 
-Suite à une première analyse du sujet, on se propose de poser la question suivante:
 
-> Peut-on trouver, à gros grain, la paternité et la date d'introduction de tout ou partie des variables d'environnement ?
+**Scope de la sous-question :** Détecter qui est le créateur d’une variable d’environnement en regardant les fichiers docker-compose.yaml et les fichiers .env
 
-A la suite du développement d'un premier outil nous permettant de répondre à cette question et fonction des résultats nous nous proposons d'explorer toutes les questions suivantes:
 
-- Quand ont été modifiée les variables ?
-- Est-ce que la paternité change ? Est-ce qu'une variable est toujours modifiée par la même personne ?
-- Est-ce que c'est toujours la même personne qui modifie les variables d'un package ?
+#### 1️⃣ 2️⃣ - Qui a utilisé cette variable d’environnement dans le code ?
 
-- Une fois qu'on aura eu nos premiers résultats, est-ce qu'on se concentre sur les outils ou sur le code ? Est-ce qu'on reste sur une analyse à gros grains "tout terrain" ?
+**Hypothèses :** Quand un utilisateur ajoute une variable d’environnement au projet, il l’ajoute en premier lieu dans un fichier de configuration ET il l’implémente quelque part dans le code
 
-- En fonction de la propreté des commits, est-ce que c'est la même personne qui introduit pour la prmeière fois une variable et qui introduit aussi sa première utilisation.
+**Scope de la sous-question :**
+* Quand une variable d’environnement est ajouté dans les fichiers docker-compose.yaml et les fichiers .env, dans le même commit, regarder ou cette variable d’environnement a été ajouté dans le code
+* Suivre et remonter les éditeurs de cette variable d’environnement à travers les commits.
+
+### 2️⃣ Quels sont les impacts liés à l'utilisation / modifications des variables d'environnement ?
+**Objectif :** Détecter la responsabilité d’une variable d’environnement, et si la modification de celle-ci dans le code a entraîné un bug.
+
+
+#### 2️⃣ 1️⃣ - Quelle est la responsabilité d’une variable d’environnement ?
+**Hypothèses :** Une variable d’environnement situé dans une condition IF à une influence sur le code (et potentiellement sur la variabilité)
+
+**Scope de la sous-question :**
+* Détecter les variable d’environnement dans les conditions IF
+* Mesurer la responsabilité du bloc conditionnel (si le IF contient 10 lignes, sa responsabilité est de 10)
+
+
+#### 2️⃣ 2️⃣ - Est ce que, quand il y a eu une modification dans le code associé à une variable d’environnement, un bug a été généré ?
+**Hypothèses :** Si on change le contenu d’un bloc IF (qui est déclenché par une variable d’environnement), nous avons une issue avec le tag BUG qui est généré, nous pouvons supposer que ce changement a généré un bug.
+
+**Scope de la sous-question :**
+* Avoir la date de la modification de l’intérieur d’un bloc IF (première sous-question)
+* Vois si après cette date, nous avons eu un bug qui a été relevé à travers les issues. 
+
+
 
 ## Support de travail :
 
