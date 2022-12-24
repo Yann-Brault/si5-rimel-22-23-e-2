@@ -22,25 +22,6 @@ Afin de répondre au mieux à cette question, nous avons fait le choix de décom
 * Quand une variable d’environnement est ajouté dans les fichiers docker-compose.yaml et les fichiers .env, dans le même commit, regarder ou cette variable d’environnement a été ajouté dans le code
 * Suivre et remonter les éditeurs de cette variable d’environnement à travers les commits.
 
-### 2️⃣ Quels sont les impacts liés à l'utilisation / modifications des variables d'environnement ?
-**Objectif :** Détecter la responsabilité d’une variable d’environnement, et si la modification de celle-ci dans le code a entraîné un bug.
-
-
-#### 2️⃣ 1️⃣ - Quelle est la responsabilité d’une variable d’environnement ?
-**Hypothèses :** Une variable d’environnement situé dans une condition IF à une influence sur le code (et potentiellement sur la variabilité)
-
-**Scope de la sous-question :**
-* Détecter les variable d’environnement dans les conditions IF
-* Mesurer la responsabilité du bloc conditionnel (si le IF contient 10 lignes, sa responsabilité est de 10)
-
-
-#### 2️⃣ 2️⃣ - Est ce que, quand il y a eu une modification dans le code associé à une variable d’environnement, un bug a été généré ?
-**Hypothèses :** Si on change le contenu d’un bloc IF (qui est déclenché par une variable d’environnement), nous avons une issue avec le tag BUG qui est généré, nous pouvons supposer que ce changement a généré un bug.
-
-**Scope de la sous-question :**
-* Avoir la date de la modification de l’intérieur d’un bloc IF (première sous-question)
-* Vois si après cette date, nous avons eu un bug qui a été relevé à travers les issues. 
-
 
 
 ## Support de travail :
