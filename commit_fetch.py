@@ -6,7 +6,10 @@ import glob
 import os
 from typing import List
 
+import git
 repository = Repo.init('.')
+
+repository = Repo.init('./')
 
 # print(repository.git.log("--patch", "8d9fd97773fa90a568024151126abe1399a48c7d"))
 # print(repository.git.show("8d9fd97773fa90a568024151126abe1399a48c7d"))

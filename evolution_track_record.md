@@ -1,6 +1,17 @@
-
-
 # Recherche de variable d'environnements dans les fichiers d'un projet
+
+###### 09 janvier 2023 - l'équipe
+
+Après avoir effectué des tests sur différents projets open source, nous avons décidé de modifier l'approche à cause des résultats obtenus.
+Le premier script que nous avions fait ne fournit pas de résultats satisfaisants.
+Ce script avait pour objectif de parcourir les commits concernant les fichiers docker-compose.yml et les fichiers .env. En effectuant un git blame nous avions la notion de paternité et de temporalité. Malheureusement beaucoup de ces git blame rendaient des additions et deletions souvent vides.
+
+Nous avons décidé donc de modifier notre approche.
+Nous voulons procéder de la manière suivante:
+
+- Nous utilisons d'abord le nouveau script de William, qui permet de sortir toutes les variables qui sont au format M_A_J. Cette méthode est loin d'être parfaite étant donné que beaucoup de résultats ne sont pas des variables d'environnement.
+- De manière à affiner ces résultats, l'idée est de trouver le fichier dans lequel chaque variable apparait afin de trouver les fichiers de configuration. Pour faire ça nous voulons analyser les commits dans lesquels les varibles apparaissent afin de déterminer dans quels fichiers elles sont utilisées. A partir de là, on peut savoir si ce sont des variables d'environnement et avec le commit on peut retrouver les auteurs, et donc la paternité.
+
 ###### 21 décembre 2022 - D'Andréa William
 
 ```python
@@ -80,7 +91,7 @@ for file_url in files:
 ```
 
 Afin de suivre au mieux la patternité de l'utilisation des variables d'envrionnements dans le code
-il est nécessaire de les détecter dans un fichier. C'est ce a quoi répond cette implémentation. 
+il est nécessaire de les détecter dans un fichier. C'est ce a quoi répond cette implémentation.
 
 A partir d'un projet composé de fichiers situé à l'emplacement `WORKING_REPOSITORY`, nous allons
 parcourir tous les fichiers ayant comme extenssion `types = ('yml', 'java', 'js')`.
@@ -89,7 +100,8 @@ Ensuite, nous allons parser chaques lignes, puis chaques mots. Le but est de dé
 d'environnements. Nous supponsons qu'une variable d'environnement est un mot composé uniquement de
 lettre majuscules, sans caractères speciaux ni de nombre.
 
-En sortie de cet alorithme, nous avons un résultat de ce type : 
+En sortie de cet alorithme, nous avons un résultat de ce type :
+
 ```
 [
     ./projects/ReleaseTests.java': [
@@ -104,19 +116,18 @@ En sortie de cet alorithme, nous avons un résultat de ce type :
         {'line_number': 7, 'env_variable': 'WARN', 'line_content': '    org.apache.http: WARN\n'},
     ],
 ]
-       
+
 ```
 
 Nous pouvons retrouver pour chaques fichier les variables d'environnement pottentielles, avec le numéro
-de la ligne, ainsi que le contenu de la ligne. 
+de la ligne, ainsi que le contenu de la ligne.
 
 Nous voyons ici la première limite de cette implémentation, en effet, dans cette ligne ci `{'line_number': 6, 'env_variable': 'ROOT', 'line_content': '    ROOT: INFO\n'}`
-il est très peu probable que `ROOT` soit une variable d'environnement. 
+il est très peu probable que `ROOT` soit une variable d'environnement.
 
 Pour faire un rapide rappel, l'objectif de cet algorithme est de trouver les variables d'environnements
 dans tous les fichiers, il faudrai cependant avoir une vérification que nos variables qui sortent de cet
 algorithme soient vraiment des variables d'environnements. Pour cela, plusieurs solutions sont possibles
+
 - avoir une confirmation de l'auteur que ces variables d'environnements ont bien été créé
 - avoir une liste de nom "classiques" de variables d'environnement et regarder si la variable d'environnement trouvé par notre algorithme est dans cette liste.
-
-
