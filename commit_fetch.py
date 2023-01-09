@@ -1,11 +1,12 @@
 import json
-
 from git import Repo
 from git import Actor
-import git
 import re
+import glob
+import os
+from typing import List
 
-repository = Repo.init('../selene-22-23-soa-selene-22-23-c')
+repository = Repo.init('.')
 
 # print(repository.git.log("--patch", "8d9fd97773fa90a568024151126abe1399a48c7d"))
 # print(repository.git.show("8d9fd97773fa90a568024151126abe1399a48c7d"))
@@ -66,7 +67,7 @@ for commit in repository.iter_commits():
                                 commits[commit_name]['deletion'].append(
                                     {name: {'file': commit_file, 'value': value}})
 
-#print(commits)
+print(commits)
 
 # Get Paternity users
 paternals = {}
@@ -80,26 +81,90 @@ for name in names:
 
 sorted_paternals = {k: v for k, v in sorted(paternals.items(), key=lambda item: item[1], reverse=True)}
 print(sorted_paternals)
-# # Writing to sample.json
-# with open("commits.json", "w") as outfile:
-#     outfile.write(json_object)
-#
-#
-#     var_utils = dict()
-#     if commit_name in commits.keys():
-#         for commit_file in commit.stats.files.keys():
-#             try:
-#                 result = repository.git.show(commit_name)
-#             except:
-#                 print(
-#                     f"file {commit_file} was deleted in the commit {commit_name}")
-#                 continue
-#             var_utils[commit_name] = {"file": commit_file, "result": result}
-#             print(
-#                 f"commit_name : {commit_name}, file : {commit_file}, result : {result}")
-# print(var_utils)
-# # json_object = json.dumps(var_utils)
-# #
-# # # Writing to sample.json
-# # with open("var_utils.json", "w") as outfile:
-# #     outfile.write(json_object)
+
+
+
+WORKING_REPOSITORY: str = "."
+
+
+def flatten(A):
+    rt = []
+    for i in A:
+        if isinstance(i, list):
+            rt.extend(flatten(i))
+        else:
+            rt.append(i)
+    return rt
+
+
+def extract_environment_variable(word: str) -> str:
+    """
+    >>> extract_environment_variable("Bonjour")
+    >>> ''
+    >>> extract_environment_variable("${MY_VARIABLE_ENV}aaa")
+    >>> 'MY_VARIABLE_ENV'
+    :param word: the word you want to check
+    :return: '' if the word is not an envionment variable, else the filtered environment variable
+    """
+
+    temp_word: str = word
+
+    # Remove the prefix in the word
+    for letter in temp_word:
+        if letter.isupper():
+            break
+        word = word[1:]
+
+    temp_word = word
+    # Remove the suffix in the word
+    for letter in temp_word[::-1]:
+        if letter.isupper():
+            break
+        word = word[:-1]
+
+    filtered_regex = flatten(re.findall(r"(^[A-Z0-9_]+)", word))
+    if len(filtered_regex) == 0 or len(filtered_regex[0]) <= 2:
+        return ''
+
+    if len(filtered_regex[0]) == len(word):
+        return word
+
+
+    return ''
+
+
+def recover_environment_variable_in_a_file(url_file: str) -> List[str]:
+    result = []
+    with open(url_file) as file:
+        for line_number, line in enumerate(file, 1):
+            words_in_line = line.split()
+
+            for word in words_in_line:
+                env_variable = extract_environment_variable(word)
+                if env_variable != '':
+                    result.append({"line_number": line_number, "env_variable": env_variable})
+
+    return result
+
+
+
+
+types = ('yml', 'java', 'js') # the tuple of file types
+files = []
+for file_type in types:
+    files.extend(glob.glob(f'{WORKING_REPOSITORY}/**/*.{file_type}', recursive=True))
+
+files = [f for f in files if os.path.isfile(f)]
+
+result = {}
+for file_url in files:
+    env_var = recover_environment_variable_in_a_file(file_url)
+    if len(env_var) > 0:
+        print("file", file_url, ":\n")
+        for line in env_var:
+            print("\t", line)
+        print("\n")
+
+
+
+#print(result)
