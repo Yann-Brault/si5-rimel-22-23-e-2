@@ -1,4 +1,5 @@
 import json
+import subprocess
 from git import Repo
 from git import Actor
 import re
@@ -118,6 +119,8 @@ def extract_environment_variable(word: str) -> str:
             break
         word = word[1:]
 
+    #print(temp_word)
+
     temp_word = word
     # Remove the suffix in the word
     for letter in temp_word[::-1]:
@@ -152,7 +155,7 @@ def recover_environment_variable_in_a_file(url_file: str) -> List[str]:
 
 
 
-types = ('yml', 'java', 'js') # the tuple of file types
+types = ('yml', 'java') # the tuple of file types
 files = []
 for file_type in types:
     files.extend(glob.glob(f'{WORKING_REPOSITORY}/**/*.{file_type}', recursive=True))
@@ -164,8 +167,14 @@ for file_url in files:
     env_var = recover_environment_variable_in_a_file(file_url)
     if len(env_var) > 0:
         print("file", file_url, ":\n")
+
         for line in env_var:
             print("\t", line)
+            line = str(line["line_number"])
+
+            git_blame = subprocess.check_output(["git", "blame", file_url, "-L", line + "," + line, "--incremental"]).decode("utf-8").split("\n")
+            print("\t\t", git_blame[1])
+            print("\t\t", git_blame[2], "\n")
         print("\n")
 
 
