@@ -4,11 +4,7 @@ Peut-on déterminer la paternité de l’implémentation (et l’évolution) d�
 en appliquant les méthodes de détermination de paternité aux endroits où la variabilité est implémentée ?
 
 ##### Option :
-Nous nous concentrerons sur les variables d'environnement. 
-
-# Abstract
-
-@TODO : en fin de livre, a compléter
+Nous nous concentrerons sur les variables d'environnement.
 
 # Introduction - contexte et motivations
 
@@ -117,6 +113,7 @@ Cette question implique 2 sous-questions :
 
 > 1. Qui a créé pour la première fois la variable d’environnement ?
 > 2. Qui a édité cette variable d’environnement dans le code ?
+> 3. Comment mesurer la paternité d'une variabilité à l'instant T et au fil du temps ?
 
 
 À la base du projet, nous voulions aller encore plus loin que ces 2 sous-questions, comme connaître les
@@ -171,7 +168,7 @@ interviews pour préparer la suite, ou même essayer de splitter cette responsab
 Nous pouvons ensuite aller faire cette mesure pour chaque commit, et donc avoir une vue globale du pourcentage de responsabilité
 de variabilité au fil du temps. 
 
-#### Challenge 3 - Créer "l'arbre généalogique" de la patternité des variables d'environnements
+#### Challenge 3 - Créer "l'arbre généalogique" de la paternité des variables d'environnements
 
 Notre challenge 2 permettait d'avoir une vision globale de la variabilité. La paternité était associée à un pourcentage.
 Cependant, ce pourcentage est globalement utile pour un manager, mais admettons vous êtes développeur et vous tombez
@@ -183,9 +180,147 @@ un git blame, mais qui vous permettrait d'avoir la personne qui a le plus contri
 
 
 
+# Partie 1 - Détecter les variables d'environnements
+
+Cette section aura pour ligne de conduite la détection de variables d'environnements dans un projet. C'est une partie
+relativement complexe car l'utilisation des variables d'environnement dans un code est très dépendant de son langage de
+programmation. Alors oui, cela peut-être un réel avantage si l'on souhaite trouver les variables d'environnements 
+dans un projet, mais si l'on cherche à analyser une variété de projets dans des langages particuliers, cela est 
+compliqué.
+
+La première étape est de faire un état de l'art de ce qu'il existe déjà. Nous avons procédé à 2 méthodes, la première
+recherche est via Google Scholar ensuite faire des recherches plus générales sur le web. 
+
+Nous avons trouvé un article intéressant nommé "A framework for creating custom rules for static analysis tools" [^1].
+Cet article est intéressant et décrit comment créer des règles personnalisées pour faire de l'analyse statique de code via
+l'outil `Fortify Software Source Code Analyzer`. Un outil comme celui-ci serait parfait pour nous, car on pourrait lui donner
+des règles, et il irai faire l'analyse statique du code. Cependant, ce logiciel est sous license, nous ne pouvons donc
+pas l'utiliser, de plus, nous n'avons pas trouvé sa version en open-source. 
+
+Un outil réalisant une analyse de code statique est SonarQube, nous pouvons également lui donner des règles personnalisées,
+cependant nous n'avons pas trop bien compris comment cela fonctionne. Nous avons donc fait le choix de créer notre propre
+outil, sous Python, qui irait explorer les fichiers et trouverait directement les variables d'environnements. 
+
+***
+
+
+### Hypothèse 1
+
+Avant de continuer, revenons à notre problème. Nous cherchons à trouver des variables d'environnements dans un code. Notre
+première idée fut d'utiliser des projets qui sont dockerisées via un docker-compose. En effet, dans les docker-compose,
+en général nous trouvons les variables d'environnement qui seront injectés. Par-dessus cette hypothèse, nous avons supposé
+que la première introduction d'une variable d'environnement dans un projet au niveau du code se faisait dans le même 
+commit que celui ou nous avons placé notre variable d'environnement dans le docker-compose. 
+
+
+Afin de tester cette hypothèse, nous avons réaliser un programme python qui va itérer parmi les fichiers docker-compose
+d'un projet, et en extraire, pour chaque variable d'environnement, les développeurs qui ont mis cette variable d'environnement
+une première fois dans le code, et les développeurs qui ont supprimé une variable d'environnement. Nous sommes
+donc parti à la recherche de projets open-source, dockerisé et gérer via docker-compose. Cela fut relativement
+dur, mais nous avons trouvé un projet intéressant nommé `Rocket.Chat` disponible [ici](https://github.com/RocketChat/Rocket.Chat/tree/alpine-base)
+qui est un outil de messagerie et de collaboration open-source pour les équipes. 
+
+Il contient à ce jour 22k commits, et le fichier docker-compose ressemble à ceci : 
+```yaml
+services:
+  rocketchat:
+    image: rocketchat/rocket.chat:latest
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - PORT=3000
+      - ROOT_URL=http://localhost:3000
+      - MONGO_URL=mongodb://mongo:27017/rocketchat
+      - MONGO_OPLOG_URL=mongodb://mongo:27017/local
+      - MAIL_URL=smtp://smtp.email
+#       - HTTP_PROXY=http://proxy.domain.com
+#       - HTTPS_PROXY=http://proxy.domain.com
+    depends_on:
+      - mongo
+    ports:
+      - 3000:3000
+    labels:
+      - "traefik.backend=rocketchat"
+      - "traefik.frontend.rule=Host: your.domain.tld"
+```
+
+Au niveau des variables d'environnement, la norme est que les variables d'environnements soient nommé
+par des mots en majuscules, séparé par des underscores. Nous retrouvons cette syntaxe dans ce fichier docker-compose. 
+
+Nous allons donc, via une fonction regex qui doit reconnaitre ces variables d'environnements, remontrer
+les commits, afin de voir au fil du temps qui à ajouter / supprimer une de ces variables d'environnement. La fonction
+REGEX que nous utilisons dans le fichier docker-compose est celle-ci : `^\s*-\s(\w+)=(.*)$`
+
+En analysant le projet `Rocket.Chat` sous la branche `alpine-base` (15k commits), nous arrivons à trouver une patternité
+très large. Nous avons analysé ce projet grâce à l'algorithme `hypothese_1.py`, et nous avons regardé qui a le plus modifié
+des variables d'environnement dans le fichier `docker-compose.yml` (nous avons regardé les additions et les deletions). 
+Globalement, notre résultat montre que le développeur `Gabriel Engel` a fait le plus de modifications de variables d'environnement dans le fichier docker-compose, il a donc une 
+forte paternité au niveau de l'ajout ou retrait de variabilité dans le code (à la source)
+
+```json
+{
+  "Gabriel Engel": {
+    "addition": 406,
+    "deletion": 213
+  },
+  "Guilherme Gazzo": {
+    "addition": 272,
+    "deletion": 184
+  },
+  "pkgodara": {
+    "addition": 34,
+    "deletion": 23
+  },
+  "Pradeep Kumar": {
+    "addition": 68,
+    "deletion": 46
+  },
+  "D\u00e1vid Balatoni": {
+    "addition": 34,
+    "deletion": 23
+  },
+  "Rodrigo Nascimento": {
+    "addition": 268,
+    "deletion": 150
+  },
+  "Peter Lee": {
+    "addition": 34,
+    "deletion": 23
+  }, ...
+}
+```
+
+Cette première implémentation, relativement grossière, nous a permis de réorienter notre étude, mais globalement,
+donne déjà une vision très large de la paternité de l'ajout / retrait de variable d'environnement dans un projet dockerisé. 
+
+
+#### Analyse et limites
+
+Nous avons fait le choix d'invalider cette hypothèse à ce stade du projet,car nous nous sommes rendu compte de
+plusieurs choses :
+
+* La première étant que le nombre de fichiers open-source dockerisé est en réalité très faible. 
+* De plus, nous nous sommes basés sur l'idée qu'une variable d'environnement est injecté via le fichier docker-compose, mais nous
+nous sommes aperçus grâce à plusieurs projets qu'en réalité, les fichiers docker-compose ne contiennent qu'une petite
+partie des variables d'environnements, surtout sur des projets Java Spring, ou celles-ci sont pour la majorité écrite
+dans les fichiers ".properties". 
+* De plus, dans nos hypothèses, nous partions sur la supposition que le moment où un développeur ajoute une variable 
+d'environnement à un fichier docker-compose, il utilise cette variable d'environnement quelque part dans 
+le code. Sauf que cette idée ne peut pas être poursuivie pour 2 raisons. 
+  * La première étant qu'en général, notamment sur les gros projets, nous ne l'ajoutons pas au code au moment du même commit
+  * La seconde raison est que nous supposons que la variable d'environnement est injecté dans le code sous la même syntaxe, c'est-à-dire sous la forme
+  majuscule et underscore. Cependant, nous avons vu que ce n'étais pas toujours le cas, nottament dans les projets
+  java spring ou la variable d'environnement peut être appelée dans le code sous la forme `ma.variable.environement` plutôt
+  que `MA_VARIABLE_ENVIRONNEMENT`
 
 
 
+
+
+
+# Références
+[^1]: A framework for creating custom rules for static analysis tools, Eric Dalci John Steven, https://www.academia.edu/download/30668250/SP500_262.pdf#page=49
 
 
 
