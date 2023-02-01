@@ -300,11 +300,14 @@ donne déjà une vision très large de la paternité de l'ajout / retrait de var
 Nous avons fait le choix d'invalider cette hypothèse à ce stade du projet,car nous nous sommes rendu compte de
 plusieurs choses :
 
-* La première étant que le nombre de fichiers open-source dockerisé est en réalité très faible. 
+* La première étant que le nombre de fichiers open-source dockerisé est en réalité très faible. Par exemple, nous avons
+sur une dizaine de gros projets dockerisé (Portainer, Traefik, Jenkins, Nextcloud, ...), nous n'avons trouvé que un
+seul projet qui est vraiment dockerisé via docker-compose
 * De plus, nous nous sommes basés sur l'idée qu'une variable d'environnement est injecté via le fichier docker-compose, mais nous
 nous sommes aperçus grâce à plusieurs projets qu'en réalité, les fichiers docker-compose ne contiennent qu'une petite
 partie des variables d'environnements, surtout sur des projets Java Spring, ou celles-ci sont pour la majorité écrite
-dans les fichiers ".properties". 
+dans les fichiers ".properties". Par exemple, sur les projets précédemment cité, très rare sont ceux qui incluent
+les variables d'environnements dans leur docker-compose
 * De plus, dans nos hypothèses, nous partions sur la supposition que le moment où un développeur ajoute une variable 
 d'environnement à un fichier docker-compose, il utilise cette variable d'environnement quelque part dans 
 le code. Sauf que cette idée ne peut pas être poursuivie pour 2 raisons. 
@@ -314,8 +317,53 @@ le code. Sauf que cette idée ne peut pas être poursuivie pour 2 raisons.
   java spring ou la variable d'environnement peut être appelée dans le code sous la forme `ma.variable.environement` plutôt
   que `MA_VARIABLE_ENVIRONNEMENT`
 
+    
+### Hypothèse 2
 
+Maintenant que nous nous sommes rendu compte que se limité aux projets dockerisées en docker-compose nous contraignait, 
+nous devons partir dans une autre direction. 
 
+Pour dézommer, dans l'hypothèse 1, notre ligne de conduite était de se dire "nous regardons qui a créer les variables d'environnements,
+et ensuite, nous iront les traiter dans le code". Sauf que nous nous sommes apercus que, trouver l'endroit ou sont insérer
+toutes les variables d'environnement avant d'être injecté dans le code, est un peu mission impossible dans la mesure
+ou chasue projet a sa manière de faire, certains les mettent tous dans des fichiers docker-compose, d'autres dans des .env,
+d'autres les mettent nul part. La ligne de conduite de notre hypothèse 2 est de dire "nous allons regarder partout dans 
+le code ou nous trouvons des variables d'environnements (que ce soit un endroit ou est centralisé les variables d'environnements
+ou même dans le code), et ensuite de faire de l'analyse de patternité dessus". 
+
+Notre premier problème est, globalement toujours le même, c'est-à-dire détecter des variables d'environnements. Chaque
+langage a sa propre manière d'utiliser les variables d'environnements dans le code. Par exemple : 
+
+_En python_
+```python
+import os
+user = os.environ['USER']
+```
+
+_En javascript_
+```javascript
+user = process.env.USER
+```
+
+_En java_
+```java
+@Value("${database.uri}")
+private String database;
+```
+
+Il est à noter également que, pour chaque langage, nottament Java, il y a plusieurs manières d'injecter des variables
+d'environnements au code. Et souvent, les façons changent selon le framework / librarie que l'on utilise. Nous allons
+donc, dans ce projet, nous limiter aux projets Java, car énormément de projets OpenSource sont fait en java, et grâce
+à l'incubateur Apache, nous pouvons trouver des projets de taille différentes, allant de quelques centaines de commits
+([incubator-celeborn](https://github.com/apache/incubator-celeborn) par exemple) à plusieurs milliers de 
+commits ([dubbo](https://github.com/apache/dubbo) par exemple).
+
+Nous allons aussi nous concentrer sur les projets Java utilisant le framework SpringBoot. La raison principale est que 
+les projets sous SpringBoot sont généralement des architectures backend, et c'est dans ce genre d'architecture que les
+variables d'environnements sont utilisés en majorité. C'est un choix arbitraire, ayant pour réelle ambition de nous 
+faciliter le travail, car le but est de trouver des projets qui implémentent de la variabilité en fonction des variables
+d'environnements, nous avons donc trouvé cette direction (les projets Spring) plutôt bonne et plutôt en accord avec notre 
+sujet. 
 
 
 
