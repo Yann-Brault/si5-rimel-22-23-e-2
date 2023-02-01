@@ -582,10 +582,15 @@ avoir comme fin de l'analyse statique afin de faire de la détection de bug, mai
 l'analyse de paternité. 
 
 
-# Partie 2 - Mesurer de la paternité 
+# Partie 2 - Mesurer la paternité 
+
+Malgré le fait que nos hypothèses de la partie précédente implique que seulement une partie des variables
+d'environnement peuvent être detecté, il n'empêche en rien le fait de pouvoir mesurer la paternité sur ces 
+même variables d'environnements, et de calculer des pourcentages en fonction d'uniquement celles-ci. 
 
 
-
+Nous allons donc reprendre le programme situé dans `hypothese_2` et nous allons l'adapter afin qu'il puisse lire des 
+commits, et rechercher dans chaque commits si il y a eu un edition d'une variable d'environnement au fil du temps
 
 
 
