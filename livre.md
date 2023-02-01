@@ -536,13 +536,15 @@ C'est un projet de moyenne envergure, mais il nous permet tout de même de trouv
 ]
 ```
 
+#### Analyse et limites
+
 Nous pouvons voir que nous trouvons qu'un seul fichier `.properties`, contenant 5 variables d'environnements, et, nous avons
 trouvé dans le code 9 endroits ou l'on fait appel a une variable d'environnement. Respectivement 3 avec le mot clé `@Autowired`, 
 3 avec le mot clé `@Value`, et 3 avec le mot clé `System.getenv`. Dans un projet, n'y a donc pas qu'une seule manière
 d'utiliser des variables d'environnements, ce qui n'est pas forcément en notre avantage. De plus, pour un projet qui 
 à plus de 2000 commits, nous remarquons qu'il n'y a pas tant d'utilisation de variable d'environnements, ce qui peut,
 potentiellement etre une faille de sécurité (peut-être qu'il existe des variables qui devraient être des variables
-d'environnement mais dont la valeur est écrite directement dans le code).
+d'environnement, mais dont la valeur est écrite directement dans le code).
 
 Une autre chose à noter, est que, la variable d'environnement `spring.application.name:spring-boot-application` ne se
 trouve dans aucun fichier `.properties`, cependant, elle est utilisé quelque part. Cette variable d'environnement est
@@ -554,6 +556,33 @@ faut pas se fier à 100% au fichier `.properties`, mais qu'il faut aussi aller c
 `.properties` et ensuite aller chercher ces variables d'environnements dans le code, nous passerons à côté de beaucoup d'entre
 elles. D'ailleurs, aucune des variables d'environnements trouver dans le fichier `.properties` n'a été retrouvé quelque part 
 dans le code, ce qui peut également représenter un "code-smell". 
+
+Une limite aussi de notre algorithme tel que designé, est qu'il ne va pas chercher les lignes ou les variables
+d'environnements sont utilisé quand il détecte le mot clé `@Autowired()`. C'est une hypothèse que l'on prend, on 
+supposera que l'on mesurera la variabilité par rapport a ce mot clé. Cette hypothèse est choisie par manque de temps
+de pousser le projet plus loin, et par surtout un manque d'implication de plusieurs membres du groupe. 
+
+
+### Conclusion de partie
+
+Nous avons, dans cette première partie, mis un accent sur la recherche de variables d'environnements. Nous avons d'abord
+essayé une approche qui se voulait générique par fichier docker-compose, mais nous nous sommes finalement rendu compte
+que cette approche était bien plus restrictive que générique.
+
+Nous avons donc dû aller chercher les variables d'environnement directement dans les projets. Pour que ce soit plus simple,
+nous avons décidé de se concentrer sur les projets sous Java Spring Boot, car ce sont des web services qui utilisent régulièrement
+des variables d'environnements. De là, nous avons pu extraire certaines variables d'environnements, toujours en supposant
+certaines hypothèses telles que la recherche par mot clé. 
+
+La conclusion de cette première partie est que, il est très compliqué de trouver des variables d'environnements dans un projet,
+surtout si ce projet est polyglote. De plus, selon le langage de programmation que nous utilisons, il y a des manières
+différentes d'utiliser des variables d'environnements, et au-dessus de cela, le framework utilisé rajoute des éventuelles possibilités.
+Cette partie pourrait mener à une étude et a un outil bien plus approfondi, car réellement compliqué. Cet outil pourrait
+avoir comme fin de l'analyse statique afin de faire de la détection de bug, mais aussi, et c'est notre prochaine partie,
+l'analyse de paternité. 
+
+
+# Partie 2 - Mesurer de la paternité 
 
 
 
