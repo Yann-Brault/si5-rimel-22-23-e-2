@@ -206,12 +206,15 @@ outil, sous Python, qui irait explorer les fichiers et trouverait directement le
 
 ### Hypothèse 1
 
+#### Introduction
+
 Avant de continuer, revenons à notre problème. Nous cherchons à trouver des variables d'environnements dans un code. Notre
 première idée fut d'utiliser des projets qui sont dockerisées via un docker-compose. En effet, dans les docker-compose,
 en général nous trouvons les variables d'environnement qui seront injectés. Par-dessus cette hypothèse, nous avons supposé
 que la première introduction d'une variable d'environnement dans un projet au niveau du code se faisait dans le même 
 commit que celui ou nous avons placé notre variable d'environnement dans le docker-compose. 
 
+#### Recherche
 
 Afin de tester cette hypothèse, nous avons réaliser un programme python qui va itérer parmi les fichiers docker-compose
 d'un projet, et en extraire, pour chaque variable d'environnement, les développeurs qui ont mis cette variable d'environnement
@@ -323,6 +326,8 @@ le code. Sauf que cette idée ne peut pas être poursuivie pour 2 raisons.
 Maintenant que nous nous sommes rendu compte que se limité aux projets dockerisées en docker-compose nous contraignait, 
 nous devons partir dans une autre direction. 
 
+#### Introduction
+
 Pour dézommer, dans l'hypothèse 1, notre ligne de conduite était de se dire "nous regardons qui a créer les variables d'environnements,
 et ensuite, nous iront les traiter dans le code". Sauf que nous nous sommes apercus que, trouver l'endroit ou sont insérer
 toutes les variables d'environnement avant d'être injecté dans le code, est un peu mission impossible dans la mesure
@@ -366,10 +371,80 @@ d'environnements, nous avons donc trouvé cette direction (les projets Spring) p
 sujet. 
 
 
+#### Recherche
+
+_La question qui se pose à nous maintenant est, comment trouver les variables d'environnements dans un projet Java
+Spring Boot ?_ 
+
+
+Une analyse de l'existant serait bien utile, et nous permettrait de potentiellement gagner du temps. Cependant, malgré 
+plusieurs recherches de papiers scientifiques, nous n'avons rien trouvé de vraiment intéressant. Il y a beaucoup d'articles
+sur de l'analyse statique de code, mais pas vraiment d'article vraiment utile pour faire de la détection de variables
+d'environnements. 
+
+Cependant, nous découvrimes un article qui aurai pu être intéressant, nommé "Automated Microservice Code-Smell Detection" écrit
+par Andrew Walker, Dipta Das, et Tomas Cerny [^2]. En gros, ils ont développé un [outil open-source](https://github.com/cloudhubs/msa-nose) permettant de faire de l'analyse statique
+de code, mais sur des architectures micro-services. Cet outil permet de détecter les faiblesses de l'architecture. 
+Malgré qu'il évoque une utilisation des variables d'environnement dans leur outil, nous n'avons pas pu trouvé vraiment
+d'utilisation concrête de cet outil dans notre situation. De plus, après lecture rapide de leur code, nous n'avons rien
+trouvé de vraiment exploitable. Néanmoins, l'outil est réellement intéressant pour analyser des projets sous Spring Boot. 
+
+Nous devons donc nous orienter vers un outil développé par nos soins qui irai trouver les variables d'environnements dans
+un projet Java Spring Boot.
+
+Une des grosses problèmatiques de notre projet est qu'en Spring Boot, les variables d'environnements ne sont injectés 
+sous la forme classique (exemple : "MA_VARIABLE_ENVIRONNEMENT"), mais sous une forme spécifique ("ma.variable.environnement"),
+ce qui nous complique la tâche, car, Java est un langage orienté objet, et donc, faire de l'analyse statique générerait
+énormément de faux positifs. En effet, dans l'exemple "ma.variable.environnement" peut-être une variable d'environnement,
+mais nous pourrions également avoir "environnement" qui est un attribut de la classe "variable" qui est un attribut de
+la classe "ma". 
+
+Ce problème étant relevé, nous avons pensé à 2 solutions. La première étant de les détecter via analyse statique de code (comme l'hypothèse 1 par exemple),
+la seconde étant via analyse dynamique, c'est-à-dire executé le code, aller travailler dans la JVM pour trouver les variables
+d'environnements injecté, et ensutie faire des correlations dans le code. 
+
+La seconde option fut très rapidement exclue, dû à la difficulté apparente que serait d'aller ouvrir la JVM, nous ne savons
+même pas si cela est possible. Potentiellement sela pourrait-être une solution, avec plus de temps nous aurions potentiellement
+exploré cette piste, mais il est vrai qu'à première vu, elle nous parait bien trop complexe à explorer. 
+
+Il nous reste donc l'analyse statique 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Références
 [^1]: A framework for creating custom rules for static analysis tools, Eric Dalci John Steven, https://www.academia.edu/download/30668250/SP500_262.pdf#page=49
-
+[^2]: Automated Microservice Code-Smell Detection, Andrew Walker, Dipta Das, and Tomas Cerny, https://par.nsf.gov/servlets/purl/10310336
 
 
 
