@@ -382,7 +382,7 @@ plusieurs recherches de papiers scientifiques, nous n'avons rien trouvé de vrai
 sur de l'analyse statique de code, mais pas vraiment d'article vraiment utile pour faire de la détection de variables
 d'environnements. 
 
-Cependant, nous découvrimes un article qui aurai pu être intéressant, nommé "Automated Microservice Code-Smell Detection" écrit
+Cependant, nous découvrimes un article qui aurait pu être intéressant, nommé "Automated Microservice Code-Smell Detection" écrit
 par Andrew Walker, Dipta Das, et Tomas Cerny [^2]. En gros, ils ont développé un [outil open-source](https://github.com/cloudhubs/msa-nose) permettant de faire de l'analyse statique
 de code, mais sur des architectures micro-services. Cet outil permet de détecter les faiblesses de l'architecture. 
 Malgré qu'il évoque une utilisation des variables d'environnement dans leur outil, nous n'avons pas pu trouvé vraiment
@@ -401,20 +401,159 @@ la classe "ma".
 
 Ce problème étant relevé, nous avons pensé à 2 solutions. La première étant de les détecter via analyse statique de code (comme l'hypothèse 1 par exemple),
 la seconde étant via analyse dynamique, c'est-à-dire executé le code, aller travailler dans la JVM pour trouver les variables
-d'environnements injecté, et ensutie faire des correlations dans le code. 
+d'environnements injecté, et ensuite faire des correlations dans le code. 
 
 La seconde option fut très rapidement exclue, dû à la difficulté apparente que serait d'aller ouvrir la JVM, nous ne savons
 même pas si cela est possible. Potentiellement sela pourrait-être une solution, avec plus de temps nous aurions potentiellement
 exploré cette piste, mais il est vrai qu'à première vu, elle nous parait bien trop complexe à explorer. 
 
-Il nous reste donc l'analyse statique 
+L'analyse statique, quant à elle, s'annonce un peu plus compliqué que pour notre première hypothèse. En effet,
+il y a plusieurs manière d'injecter des variables d'environnement dans le code. Avec Java Spring Boot, il y a
+3 manières qui sont utilisés en majorité pour intégrer des variables d'environnements. 
 
+- **Option 1 : Grâce à Java `System.getenv()`**
 
+Par exemple, si nous voulons accéder à la variable d'environnement "MA_VARIABLE_ENVIRONNEMENT", la ligne
+```java 
+public int myVar = System.getenv("MA_VARIABLE_ENVIRONNEMENT");
+```
 
+- **Option 2 : Grâce au fichier `.properties` et à l'annotation `@Value()`** 
 
+Dans le fichier `/ressources/application.properties`
+```text
+ma.variable.environnement=${MA_VARIABLE_ENVIRONNEMENT}
+```
 
+Dans le code
+```java
+@Value("${ma.variable.environnement}")
+private String myVar;
+```
 
+- **Option 3 : Grâce au fichier `.properties`, à l'annotation `@Autowired` et à la classe `Environment`**
 
+```java
+import org.springframework.core.env.Environment;
+
+@Autowired
+private Environment env;
+
+env.getProperty("ma.variable.environnement")
+```
+
+Globalement nous pouvons faire une première conclusion. Nous pouvons trouver dans les fichiers `.properties`
+les différentes variables d'environnements qui seront ensuite injecté dans le code. De plus, dans le code, nous avons
+3 manière de trouver des variables d'environnements :
+- par le mot clé `System.getenv( ... )`
+- par l'annotation `@Value( ... )`
+- par l'annotation `@Autowired` suivi de "Environment", avec l'import "import org.springframework.core.env.Environment;"
+
+Nous avons donc créer un programme sous python qui réalise 2 actions, il va chercher les variables d'environnements dans les
+fichiers `.properties`, et ensuite, va regarder dans tout le projet s'il trouve un de ces 3 "mot-clé".
+
+Nous avons tester cet algorithme sur le projet spring-boot-admin disponible [ici](https://github.com/codecentric/spring-boot-admin).
+C'est un projet de moyenne envergure, mais il nous permet tout de même de trouver quelques variables d'environnements. Voici le résultat :
+
+`Environment variables in the .properties files`
+```json
+[
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-server/src/test/resources/server-config-test.properties",
+    "env_variables": [
+      {
+        "injected_name": "spring.boot.admin.contextPath",
+        "value": "/admin"
+      },
+      {
+        "injected_name": "spring.boot.admin.instance-auth.default-user-name",
+        "value": "admin"
+      },
+      {
+        "injected_name": "spring.boot.admin.instance-auth.default-password",
+        "value": "topsecret"
+      },
+      {
+        "injected_name": "spring.boot.admin.instance-auth.service-map.my-service.userName",
+        "value": "me"
+      },
+      {
+        "injected_name": "spring.boot.admin.instance-auth.service-map.my-service.userPassword",
+        "value": "secret"
+      }
+    ]
+  }
+]
+```
+`Found environment variables in code`
+```json
+[
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-client/src/test/java/de/codecentric/boot/admin/client/AbstractClientApplicationTest.java",
+    "word": "@Autowired",
+    "line": "\t\t@Autowired\n"
+  },
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-client/src/main/java/de/codecentric/boot/admin/client/config/InstanceProperties.java",
+    "word": "@Value(",
+    "line": "\t@Value(\"${spring.application.name:spring-boot-application}\")\n"
+  },
+  {
+    "file": "./spring-boot-admin/.mvn/wrapper/MavenWrapperDownloader.java",
+    "word": "System.getenv",
+    "line": "        if (System.getenv(\"MVNW_USERNAME\") != null && System.getenv(\"MVNW_PASSWORD\") != null) {\n"
+  },
+  {
+    "file": "./spring-boot-admin/.mvn/wrapper/MavenWrapperDownloader.java",
+    "word": "System.getenv",
+    "line": "            String username = System.getenv(\"MVNW_USERNAME\");\n"
+  },
+  {
+    "file": "./spring-boot-admin/.mvn/wrapper/MavenWrapperDownloader.java",
+    "word": "System.getenv",
+    "line": "            char[] password = System.getenv(\"MVNW_PASSWORD\").toCharArray();\n"
+  },
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-server/src/test/java/de/codecentric/boot/admin/server/config/AdminServerPropertiesTest.java",
+    "word": "@Autowired",
+    "line": "\t@Autowired\n"
+  },
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-server/src/main/java/de/codecentric/boot/admin/server/config/AdminServerHazelcastAutoConfiguration.java",
+    "word": "@Value(",
+    "line": "\t@Value(\"${spring.boot.admin.hazelcast.event-store:\" + DEFAULT_NAME_EVENT_STORE_MAP + \"}\")\n"
+  },
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-server/src/main/java/de/codecentric/boot/admin/server/config/AdminServerHazelcastAutoConfiguration.java",
+    "word": "@Value(",
+    "line": "\t\t@Value(\"${spring.boot.admin.hazelcast.sent-notifications:\" + DEFAULT_NAME_SENT_NOTIFICATIONS_MAP + \"}\")\n"
+  },
+  {
+    "file": "./spring-boot-admin/spring-boot-admin-server-ui/src/test/java/de/codecentric/boot/admin/server/ui/config/AdminServerUiPropertiesTest.java",
+    "word": "@Autowired",
+    "line": "\t@Autowired\n"
+  }
+]
+```
+
+Nous pouvons voir que nous trouvons qu'un seul fichier `.properties`, contenant 5 variables d'environnements, et, nous avons
+trouvé dans le code 9 endroits ou l'on fait appel a une variable d'environnement. Respectivement 3 avec le mot clé `@Autowired`, 
+3 avec le mot clé `@Value`, et 3 avec le mot clé `System.getenv`. Dans un projet, n'y a donc pas qu'une seule manière
+d'utiliser des variables d'environnements, ce qui n'est pas forcément en notre avantage. De plus, pour un projet qui 
+à plus de 2000 commits, nous remarquons qu'il n'y a pas tant d'utilisation de variable d'environnements, ce qui peut,
+potentiellement etre une faille de sécurité (peut-être qu'il existe des variables qui devraient être des variables
+d'environnement mais dont la valeur est écrite directement dans le code).
+
+Une autre chose à noter, est que, la variable d'environnement `spring.application.name:spring-boot-application` ne se
+trouve dans aucun fichier `.properties`, cependant, elle est utilisé quelque part. Cette variable d'environnement est
+surement situé dans un fichier `.properties` de Spring Boot directement, et elle est appelée ensuite par `spring-boot-admin`
+
+On se rend compte donc qu'il ne 
+faut pas se fier à 100% au fichier `.properties`, mais qu'il faut aussi aller chercher des variables d'environnements
+"a la main" dans le code directement. Nous ne pouvons pas prendre les variables d'environnement situé dans le fichier
+`.properties` et ensuite aller chercher ces variables d'environnements dans le code, nous passerons à côté de beaucoup d'entre
+elles. D'ailleurs, aucune des variables d'environnements trouver dans le fichier `.properties` n'a été retrouvé quelque part 
+dans le code, ce qui peut également représenter un "code-smell". 
 
 
 
