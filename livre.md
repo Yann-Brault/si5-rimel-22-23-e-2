@@ -557,8 +557,8 @@ faut pas se fier à 100% au fichier `.properties`, mais qu'il faut aussi aller c
 elles. D'ailleurs, aucune des variables d'environnements trouver dans le fichier `.properties` n'a été retrouvé quelque part 
 dans le code, ce qui peut également représenter un "code-smell". 
 
-Une limite aussi de notre algorithme tel que designé, est qu'il ne va pas chercher les lignes ou les variables
-d'environnements sont utilisé quand il détecte le mot clé `@Autowired()`. C'est une hypothèse que l'on prend, on 
+Une limite aussi de notre algorithme, est qu'il ne va pas chercher les lignes ou les variables
+d'environnements sont utilisés quand il détecte le mot clé `@Autowired()`. C'est une hypothèse que l'on prend, on 
 supposera que l'on mesurera la variabilité par rapport a ce mot clé. Cette hypothèse est choisie par manque de temps
 de pousser le projet plus loin, et par surtout un manque d'implication de plusieurs membres du groupe. 
 
@@ -590,21 +590,160 @@ même variables d'environnements, et de calculer des pourcentages en fonction d'
 
 
 Nous allons donc reprendre le programme situé dans `hypothese_2` et nous allons l'adapter afin qu'il puisse lire des 
-commits, et rechercher dans chaque commits si il y a eu un edition d'une variable d'environnement au fil du temps
+commits, et rechercher dans chaque commit s'il y a eu un edition d'une variable d'environnement au fil du temps
+
+Comme premier exemple, nous avons utilisé le projet `spring-boot-admin` et nous sommes aller récupérer les contributions.
+Vous retrouverez le programme dans le fichier `/part2`, avec les resultats sous forme de JSON dans les répertoires
+des projets respectifs. 
+
+Nous obtenons ce résultat : 
+
+```json 
+{
+  "Fedor Bobin": {
+    "addition": 2,
+    "deletion": 0,
+    "contributions": 2,
+    "total_contribution_percentage": 2.898550724637681,
+    "addition_percentage": 2.898550724637681,
+    "deletion_percentage": 0.0
+  },
+ 
+  "Stephan K\u00f6ninger": {
+    "addition": 6,
+    "deletion": 0,
+    "contributions": 6,
+    "total_contribution_percentage": 8.695652173913043,
+    "addition_percentage": 8.695652173913043,
+    "deletion_percentage": 0.0
+  },
+  "Johannes Edmeier": {
+    "addition": 32,
+    "deletion": 0,
+    "contributions": 32,
+    "total_contribution_percentage": 46.3768115942029,
+    "addition_percentage": 46.3768115942029,
+    "deletion_percentage": 0.0
+  },
+  "Daniel Reuter": {
+    "addition": 7,
+    "deletion": 0,
+    "contributions": 7,
+    "total_contribution_percentage": 10.144927536231885,
+    "addition_percentage": 10.144927536231885,
+    "deletion_percentage": 0.0
+  },
+}
+```
+
+Nous avons volontairement retirer certains contributeurs afin que ce ne soit pas trop long, mais vous
+pouvez retrouver ce JSON dans le dossier `part2`. Nous pouvons voir que `Johannes Edmeier` a ajouté 32 variables
+d'environnements et a un pourcentage de contribution de `46%`. Le score de contributions est calculé comme ceci : 
+
+```text
+total_contribution_percentage = (additionsUser + deletionsUser) / (additionsTotal + deletionsTotal)
+```
+
+![img.png](ressources/pie-chart-spring-boot-admin.png)
+
+Il donne ainsi le pourcentage de paternité de variabilité associé à cet utilisateur. Ce programme nous
+permet donc rapidement de visualiser qui est le responsable majoritaire de la variabilité. De plus, grâce
+à un pie-chart, nous pouvons visualiser encore plus simplement et directement voir s'il y a un déséquilibre
+dans le projet ou non, ce qui permet au chef de projet de prendre des dispositions. 
 
 
+#### Mesure de la paternité sur d'autres projets
+
+Afin de tester à plus grande échelle notre algorithme, nous l'avons lancé sur plusieurs autres projets,
+pour cela, nous avons fait une liste de projets intéressant à tester et nous avons fait des recapitulatifs
+
+- Spring Cloud Netflix ([here](https://github.com/spring-cloud/spring-cloud-netflix))
+- Dubbo Spring Boot ([here](https://github.com/apache/dubbo-spring-boot-project))
+- Spring Initializr ([here](https://github.com/spring-io/initializr))
+- Kafdrop ([here](https://github.com/obsidiandynamics/kafdrop))
+
+|Projet                                                                    |Spring Cloud Netflix|Spring Boot Admin|Dubbo |Spring Initializr|​​Kafdrop|
+|--------------------------------------------------------------------------|--------------------|-----------------|------|-----------------|---------|
+|Nombre de commits                                                         |3032                |2018             |288   |2094             |619      |
+|Nombre de contributeurs                                                   |209                 |123              |50    |85               |56       |
+|Nombre de contributeurs à la variabilité                                  |50                  |24               |5     |10               |10       |
+|Pourcentage de contributeurs totaux qui ont intérférer avec la variabilité|23,92%              |19,51%           |10,00%|11,76%           |17,86%   |
+|Pourcentage de variabilité généré du plus gros contributeur               |26,60%              |46,38%           |57,90%|71,73%           |25%      |
+|Pourcentage d'issues qui sont des bugs                                    |7,40%               |20,62%           |4,66% |9,75%            |3,64%    |
 
 
+Nous pouvons voir que sur certains projets, notamment sur Spring Initializr, la variabilité via variable
+d'environnement est très largement concentré chez un seul développeur, à plus de 71%. Pareil pour Spring Boot Admin
+et Dubbo. 
+Nous ne trouvons pas vraiment de corrélations avec le nombre de commit, nous voyons même qu'avec 
+plus de 2000 commits, nous avons quand même une concentration de cette variabilité, ce qui permet de dire que le développeur
+qui a 71% et 57% à vraiment un fort impact sur la variabilité du projet, et qu'il ne faudrait pas forcément que ce développeur
+quitte le projet. 
+
+Globalement, nous remarquons que le pourcentage de développeur qui interfère avec la variabilité (i.e. qui touche
+aux variables d'environnements) est globalement entre 10% et 20%, soit environ 1 personne sur 5 ou sur 10. C'est rassurant
+car cela signifie qu'une partie non négligeable des développeurs touche tout de même à cette variabilité, il est donc
+au courant de comment elle fonctionne et de ses subtilités. Si ce chiffre serait à moins de 5%, cela pourrait-être dangereux,
+puisqu'une minorité de développeur gère cette variabilité. 
+
+Nous avons essayé de voir si nous trouvions une corrélation avec le nombre de bug dans le code. Nous nous sommes donc
+inspirés de plusieurs papiers scientifiques pour calculer un pourcentage de "bug" dans le code (a très gros grain). Nous
+avons juste divisé le nombre d'issues GitHub qui ont un tag `bug` avec le nombre total d'issues. Les résultats ne sont
+pas convaincants, nous ne pouvons pas, grâce à nos données actuelles, tablé sur une corrélation entre le pourcentage de 
+variabilité généré par le plus gros contributeur et le pourcentage de bugs. 
 
 
+### Conclusion de partie
+
+Dans cette partie nous avons appliqué la recherche de mot clés liées à des variables d'environnements dans
+les projets Java Spring Boot avec une analyse des commits au fil du temps. 
+
+Nos recherches ont clairement démontré que dans certains projets, la gestion de la variabilité par variable
+d'environnement est souvent gérée en majorité par un seul développeur, rendant donc le projet très dépendant
+de ce même développeur. 
+
+Ces résultats sont cependant à prendre très à la légère, car, dans un premier temps, nous avons fait énormément
+d'hypothèses. Notamment sur la recherche de variables d'environnements dans le code, il se peut en effet
+que nous n'ayons pas toutes les formes d'implémentations de variables d'environnement, et que nous passons
+donc à côté de nombreuses d'entre elles. 
+
+De plus, nous réalisons des mesures qui ne sont pas forcément dans le contexte du projet. Il serai intéressant
+d'utiliser d'autre mesure de variabilité sur ces mêmes projets, afin de pouvoir les comparer entre elles, et d'avoir
+un recul supplémentaire. 
+
+De plus, nos données, même si nous avons essayé de les vérifier en faisant des recherches "à la main" directement
+dans les fichiers GitHub, ne sont potentiellement pas dépourvu d'erreurs. 
 
 
+# Conclusion
 
+Dans cette recherche, nous avons fait face à une contrainte de taille, que nous n'avons trouver qu'une partie
+de la solution en acceptant des hypothèses fortes, qui est la recherche de variables d'environnements dans un
+projet. Très peu de documentation parle de ce problème, et très peu d'outils existe. De notre point de vue, cet aspect
+de notre projet est un sujet de recherche à part entière. 
 
+Une fois ces variables d'environnements detéctés dans un projet Java Spring Boot, nous avons mesuré la paternité de
+l'édition de ces variables d'environnements (qui génère donc de la variabilité), et nous en avons conclu que dans
+beaucoup de projets, même de gros projets avec plusieurs milliers de commit, il arrive souvent que cette variabilité soit
+gérer en majorité que par un développeur. Cela peut impliquer des problèmes si ce développeur venait à quitter le projet.
 
+Cette mesure de variabilité n'est qu'un début, il faudrait la mettre en comparaison avec d'autres mesures de variabilité,
+autres qu'avec les variables d'environnements, afin de potentiellement voir les failles d'un gros projet, car
+il est difficile de noter la paternité de la variabilité dans un projet en se fiant qu'à une seule mesure. 
 
+Nous n'avons pas réussi à relever le challenge 3 qui était de générer l'arbre généalogique des variables d'environnements,
+par manque de temps. De plus, nous aurions aimé aller plus loin dans l'analyse de donnée et la génération de statistiques,
+nous aurions aimé trouver des corrélations entre la paternité et des potentielles autres métriques. 
 
+Pour l'avenir, il faudrait perfectionner l'outil de recherche de variable d'environnement, il faudrait même en créer un outil,
+open-source ou non, qui permet de trouver les variables d'environnements dans un projet, polyglote ou non. En effet,
+cette analyse statique de recherche de variable d'environnement dans un code est très utile pour des architectures 
+micro-services, ou même des API ou backends. Suite à cela, il faudrai prendre plus de temps pour analyser les résultats,
+les comparer et lancer des analyses sur des projets de plus grande ampleur, afin de confirmer ou infirmer nos résultats. 
 
+Malgré le fait que nous soyons un peu attristés de ne pas avoir pu pousser l'analyse plus loin, nous sommes globalement content
+d'avoir réussi à créer une base, que l'on espère solide, pour une poursuite de ce sujet d'étude, qui, nous l'espérons,
+découlera sur un outil qui aurait un réel interêt dans l'industrie et dans de la gestion de projet. 
 
 
 
