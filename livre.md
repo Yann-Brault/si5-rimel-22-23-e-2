@@ -6,6 +6,10 @@ Peut-on déterminer la paternité de l’implémentation (et l’évolution) d�
 
 Nous nous concentrerons sur les variables d'environnement.
 
+# Details
+
+Lien du repository git : https://github.com/Yann-Brault/si5-rimel-22-23-e-2
+
 # Contexte et motivations (à intégrer dans la partie contexte de la recherche sur le book)
 
 Dans de nombreux projets de grande envergure, nous retrouvons de la variabilité. Afin d'illustrer au mieux ce qu'est la variabilité, nous allons prendre un exemple concret. JetBrains est l'entreprise qui a créé la suite d'IDE Intellij, WebStorm, Clion... Ils ont une suite logicielle très vaste, et très développée. Si vous avez déjà utilisé plus de 2 de ces IDE, vous aurez sûrement remarqué que l'affichage, la forme du logiciel, les paramètres, se ressemblent énormément, voire sont les mêmes dans la majorité des cas.
